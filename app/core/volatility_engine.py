@@ -37,12 +37,32 @@ class VolatilityEngine:
 
     def get_strategy_weights(self, regime: VolatilityRegime) -> Dict[str, float]:
         if regime == VolatilityRegime.LOW_VOL:
-            return {"ema_crossover": 0.2}
+            return {
+                "vwap_scalper": 0.35,
+                "rsi_divergence": 0.25,
+                "bollinger_squeeze": 0.2,
+                "ema_crossover": 0.2,
+            }
         if regime == VolatilityRegime.HIGH_VOL:
-            return {"ema_crossover": 0.3}
+            return {
+                "ema_crossover": 0.3,
+                "bollinger_squeeze": 0.3,
+                "rsi_divergence": 0.2,
+                "vwap_scalper": 0.2,
+            }
         if regime == VolatilityRegime.EXTREME:
-            return {"ema_crossover": 0.1}
-        return {"ema_crossover": 0.25}
+            return {
+                "ema_crossover": 0.2,
+                "bollinger_squeeze": 0.2,
+                "rsi_divergence": 0.1,
+                "vwap_scalper": 0.1,
+            }
+        return {
+            "ema_crossover": 0.3,
+            "bollinger_squeeze": 0.25,
+            "rsi_divergence": 0.2,
+            "vwap_scalper": 0.25,
+        }
 
     def get_position_size_multiplier(self, regime: VolatilityRegime) -> float:
         multipliers = {

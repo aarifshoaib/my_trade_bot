@@ -8,6 +8,9 @@ import MetaTrader5 as mt5
 from app.core.market_data import market_data
 from app.core.volatility_engine import VolatilityEngine, VolatilityRegime
 from app.strategies.ema_crossover import EMACrossoverStrategy
+from app.strategies.rsi_divergence import RSIDivergenceStrategy
+from app.strategies.bollinger_squeeze import BollingerSqueezeStrategy
+from app.strategies.vwap_scalper import VWAPScalperStrategy
 from app.strategies.base_strategy import SignalResult
 from app.utils.logger import get_logger
 
@@ -21,9 +24,14 @@ class SignalEngine:
         self._signal_history: list[dict] = []
         self._auto_execute: dict[str, bool] = {}
 
-    def _get_strategy(self, symbol: str) -> EMACrossoverStrategy:
+    def _get_strategies(self, symbol: str) -> list:
         if symbol not in self._strategies:
-            self._strategies[symbol] = EMACrossoverStrategy(symbol)
+            self._strategies[symbol] = [
+                EMACrossoverStrategy(symbol),
+                RSIDivergenceStrategy(symbol),
+                BollingerSqueezeStrategy(symbol),
+                VWAPScalperStrategy(symbol),
+            ]
         return self._strategies[symbol]
 
     def generate_signal(self, symbol: str) -> Optional[SignalResult]:
@@ -37,16 +45,17 @@ class SignalEngine:
         regime = self.volatility_engine.detect_regime(bars_m1)
         weights = self.volatility_engine.get_strategy_weights(regime)
 
-        strategy = self._get_strategy(symbol)
-        signal = strategy.generate_signal(bars_m1, bars_m5, bars_m15)
-        if signal.direction.value == "NEUTRAL":
-            return None
+        strategies = self._get_strategies(symbol)
+        signals: list[SignalResult] = []
+        for strategy in strategies:
+            signal = strategy.generate_signal(bars_m1, bars_m5, bars_m15)
+            if signal.direction.value != "NEUTRAL":
+                signals.append(signal)
 
-        weight = weights.get(signal.strategy_name, 0.0)
-        if weight <= 0:
+        if not signals:
             return None
-        confidence = signal.confidence
-        if confidence < 0.65:
+        direction, confidence, final_signal = self._calculate_confluence(signals, weights)
+        if direction is None or confidence < 0.6:
             return None
 
         if not self._spread_ok(symbol):
@@ -55,13 +64,13 @@ class SignalEngine:
         logger.info(
             "signal_generated",
             symbol=symbol,
-            direction=signal.direction.value,
+            direction=direction.value,
             confidence=confidence,
             regime=regime.value,
         )
-        signal.confidence = confidence
-        self._record_signal(signal, regime)
-        return signal
+        final_signal.confidence = confidence
+        self._record_signal(final_signal, regime)
+        return final_signal
 
     def _spread_ok(self, symbol: str) -> bool:
         tick = market_data.get_tick(symbol)
@@ -93,6 +102,36 @@ class SignalEngine:
 
     def is_auto_execute(self, symbol: str) -> bool:
         return self._auto_execute.get(symbol, False)
+
+    def _calculate_confluence(
+        self,
+        signals: list[SignalResult],
+        weights: dict[str, float],
+    ) -> tuple[SignalDirection | None, float, SignalResult]:
+        buy = [s for s in signals if s.direction.value == "BUY"]
+        sell = [s for s in signals if s.direction.value == "SELL"]
+
+        if len(buy) >= 2 and len(buy) >= len(sell):
+            return self._aggregate("BUY", buy, weights)
+        if len(sell) >= 2 and len(sell) > len(buy):
+            return self._aggregate("SELL", sell, weights)
+        return None, 0.0, signals[0]
+
+    def _aggregate(
+        self,
+        direction: str,
+        signals: list[SignalResult],
+        weights: dict[str, float],
+    ) -> tuple[SignalDirection, float, SignalResult]:
+        total_weight = 0.0
+        weighted_conf = 0.0
+        for s in signals:
+            w = weights.get(s.strategy_name, 0.1)
+            total_weight += w
+            weighted_conf += s.confidence * w
+        confidence = weighted_conf / total_weight if total_weight > 0 else 0.0
+        best = max(signals, key=lambda s: s.confidence)
+        return best.direction, confidence, best
 
 
 signal_engine = SignalEngine()
