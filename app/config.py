@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     MAX_DAILY_LOSS_PERCENT: float = 5.0
     MAX_OPEN_POSITIONS: int = 6
     AUTO_TRADE: bool = False
+    AUTO_ARM: bool = False
     MAGIC_NUMBER: int = 202401
     NEWS_FILTER_ENABLED: bool = False
     FREE_MARGIN_MIN_PERCENT: int = 200

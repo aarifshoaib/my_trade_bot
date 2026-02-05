@@ -118,6 +118,8 @@ async def lifespan(app: FastAPI):
     mt5_connector.initialize()
     for symbol in settings.symbol_list:
         signal_engine.set_auto_execute(symbol, settings.AUTO_TRADE)
+    if settings.AUTO_ARM:
+        await bot_state.arm()
     signal_task = asyncio.create_task(_signal_loop())
     account_task = asyncio.create_task(_account_loop())
     yield
