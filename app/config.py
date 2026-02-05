@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
     CORS_ORIGINS: str = "http://localhost:5173"
+    SECRET_KEY: str = "change-me"
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./trades.db"

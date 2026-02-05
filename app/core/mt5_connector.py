@@ -83,12 +83,15 @@ class MT5Connector:
         info = mt5.account_info()
         if info is None:
             return None
+        free_margin = getattr(info, "free_margin", None)
+        if free_margin is None:
+            free_margin = getattr(info, "margin_free", None)
         return {
             "login": info.login,
             "balance": info.balance,
             "equity": info.equity,
             "margin": info.margin,
-            "free_margin": info.free_margin,
+            "free_margin": free_margin,
             "currency": info.currency,
             "server": info.server,
             "leverage": info.leverage,

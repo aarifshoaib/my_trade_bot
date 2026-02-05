@@ -93,6 +93,9 @@ async def _account_loop() -> None:
     while True:
         info = mt5.account_info()
         if info:
+            free_margin = getattr(info, "free_margin", None)
+            if free_margin is None:
+                free_margin = getattr(info, "margin_free", 0.0)
             risk_manager.sync_from_account(info.balance)
             await ws_manager.broadcast(
                 {
@@ -101,7 +104,7 @@ async def _account_loop() -> None:
                         "equity": info.equity,
                         "balance": info.balance,
                         "margin": info.margin,
-                        "free_margin": info.free_margin,
+                        "free_margin": free_margin,
                         "daily_pnl": float(risk_manager.daily_pnl),
                     },
                 }

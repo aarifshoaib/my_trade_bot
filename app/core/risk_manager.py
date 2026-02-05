@@ -112,7 +112,10 @@ class RiskManager:
             return False
         if info.margin <= 0:
             return True
-        free_margin_percent = (info.free_margin / info.margin) * 100
+        free_margin = getattr(info, "free_margin", None)
+        if free_margin is None:
+            free_margin = getattr(info, "margin_free", 0.0)
+        free_margin_percent = (free_margin / info.margin) * 100
         return free_margin_percent >= settings.FREE_MARGIN_MIN_PERCENT
 
     def _regime_multiplier(self, regime: VolatilityRegime) -> float:

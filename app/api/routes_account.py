@@ -18,11 +18,14 @@ async def account_info() -> AccountInfoResponse:
     info = mt5.account_info()
     if info is None:
         return AccountInfoResponse(equity=0, balance=0, margin=0, free_margin=0, daily_pnl=0)
+    free_margin = getattr(info, "free_margin", None)
+    if free_margin is None:
+        free_margin = getattr(info, "margin_free", 0.0)
     return AccountInfoResponse(
         equity=info.equity,
         balance=info.balance,
         margin=info.margin,
-        free_margin=info.free_margin,
+        free_margin=free_margin,
         daily_pnl=float(risk_manager.daily_pnl),
     )
 
