@@ -50,3 +50,30 @@ async def positions():
                 }
             )
     return results
+
+
+@router.get("/history")
+async def history(days: int = 1):
+    mt5_connector.ensure_connected()
+    from datetime import datetime, timedelta, timezone
+
+    to_time = datetime.now(timezone.utc)
+    from_time = to_time - timedelta(days=days)
+    deals = mt5.history_deals_get(from_time, to_time)
+    results = []
+    if deals:
+        for d in deals:
+            results.append(
+                {
+                    "ticket": d.ticket,
+                    "symbol": d.symbol,
+                    "direction": "BUY" if d.type == mt5.DEAL_TYPE_BUY else "SELL",
+                    "volume": d.volume,
+                    "price": d.price,
+                    "profit": d.profit,
+                    "time": d.time,
+                    "comment": d.comment,
+                    "entry": d.entry,
+                }
+            )
+    return results

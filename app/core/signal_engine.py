@@ -24,15 +24,22 @@ class SignalEngine:
         self._strategies = {}
         self._signal_history: list[dict] = []
         self._auto_execute: dict[str, bool] = {}
+        self._strategy_enabled: dict[str, bool] = {
+            "ema_crossover": True,
+            "rsi_divergence": True,
+            "bollinger_squeeze": True,
+            "vwap_scalper": True,
+        }
+        self._strategy_params: dict[str, dict] = {}
 
-    def _get_strategies(self, symbol: str) -> list:
+    def _get_strategies(self, symbol: str) -> dict[str, object]:
         if symbol not in self._strategies:
-            self._strategies[symbol] = [
-                EMACrossoverStrategy(symbol),
-                RSIDivergenceStrategy(symbol),
-                BollingerSqueezeStrategy(symbol),
-                VWAPScalperStrategy(symbol),
-            ]
+            self._strategies[symbol] = {
+                "ema_crossover": EMACrossoverStrategy(symbol),
+                "rsi_divergence": RSIDivergenceStrategy(symbol),
+                "bollinger_squeeze": BollingerSqueezeStrategy(symbol),
+                "vwap_scalper": VWAPScalperStrategy(symbol),
+            }
         return self._strategies[symbol]
 
     def generate_signal(self, symbol: str) -> Optional[SignalResult]:
@@ -50,7 +57,12 @@ class SignalEngine:
 
         strategies = self._get_strategies(symbol)
         signals: list[SignalResult] = []
-        for strategy in strategies:
+        for key, strategy in strategies.items():
+            if not self._strategy_enabled.get(key, True):
+                continue
+            params = self._strategy_params.get(key)
+            if params:
+                strategy.params = {**strategy.params, **params}
             signal = strategy.generate_signal(bars_m1, bars_m5, bars_m15)
             if signal.direction.value != "NEUTRAL":
                 signals.append(signal)
@@ -118,6 +130,20 @@ class SignalEngine:
 
     def is_auto_execute(self, symbol: str) -> bool:
         return self._auto_execute.get(symbol, False)
+
+    def set_strategy_enabled(self, name: str, enabled: bool) -> None:
+        self._strategy_enabled[name] = enabled
+
+    def set_strategy_params(self, name: str, params: dict) -> None:
+        self._strategy_params[name] = params
+
+    def get_strategy_status(self) -> list[dict]:
+        return [
+            {"name": "ema_crossover", "enabled": self._strategy_enabled.get("ema_crossover", True)},
+            {"name": "rsi_divergence", "enabled": self._strategy_enabled.get("rsi_divergence", True)},
+            {"name": "bollinger_squeeze", "enabled": self._strategy_enabled.get("bollinger_squeeze", True)},
+            {"name": "vwap_scalper", "enabled": self._strategy_enabled.get("vwap_scalper", True)},
+        ]
 
     def _calculate_confluence(
         self,

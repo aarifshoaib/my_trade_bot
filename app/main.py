@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes_account import router as account_router
 from app.api.routes_health import router as health_router
 from app.api.routes_settings import router as settings_router
+from app.api.routes_strategy import router as strategy_router
 from app.api.routes_signal import router as signal_router
 from app.api.routes_trade import router as trade_router
 from app.api.routes_websocket import router as ws_router
@@ -34,11 +35,6 @@ async def _signal_loop() -> None:
         status = await bot_state.get_status()
         if status.running and not status.paused:
             for symbol in settings.symbol_list:
-                if not signal_engine.is_auto_execute(symbol):
-                    continue
-                if not status.armed:
-                    continue
-
                 signal = await asyncio.to_thread(signal_engine.generate_signal, symbol)
                 if signal is None:
                     continue
@@ -56,6 +52,9 @@ async def _signal_loop() -> None:
                         },
                     }
                 )
+
+                if not signal_engine.is_auto_execute(symbol) or not status.armed:
+                    continue
 
                 account_info = mt5.account_info()
                 equity = account_info.equity if account_info else 0.0
@@ -149,6 +148,7 @@ app.include_router(account_router)
 app.include_router(trade_router)
 app.include_router(signal_router)
 app.include_router(settings_router)
+app.include_router(strategy_router)
 app.include_router(ws_router)
 
 

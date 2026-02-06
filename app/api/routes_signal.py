@@ -18,6 +18,17 @@ async def signal_history():
     return signal_engine.get_recent_signals(limit=200)
 
 
+@router.get("/forecast")
+async def signal_forecast():
+    recent = signal_engine.get_recent_signals(limit=200)
+    by_symbol: dict[str, dict] = {}
+    for item in recent:
+        symbol = item.get("symbol")
+        if symbol and symbol not in by_symbol:
+            by_symbol[symbol] = item
+    return list(by_symbol.values())
+
+
 @router.post("/toggle-auto")
 async def toggle_auto(symbol: str, enabled: bool):
     signal_engine.set_auto_execute(symbol, enabled)
