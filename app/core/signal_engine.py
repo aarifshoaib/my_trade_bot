@@ -7,6 +7,7 @@ import MetaTrader5 as mt5
 
 from app.core.market_data import market_data
 from app.core.volatility_engine import VolatilityEngine, VolatilityRegime
+from app.indicators.ema import ema
 from app.strategies.ema_crossover import EMACrossoverStrategy
 from app.strategies.rsi_divergence import RSIDivergenceStrategy
 from app.strategies.bollinger_squeeze import BollingerSqueezeStrategy
@@ -43,6 +44,8 @@ class SignalEngine:
             return None
 
         regime = self.volatility_engine.detect_regime(bars_m1)
+        if regime == VolatilityRegime.EXTREME:
+            return None
         weights = self.volatility_engine.get_strategy_weights(regime)
 
         strategies = self._get_strategies(symbol)
@@ -55,7 +58,9 @@ class SignalEngine:
         if not signals:
             return None
         direction, confidence, final_signal = self._calculate_confluence(signals, weights)
-        if direction is None or confidence < 0.6:
+        if direction is None or confidence < 0.7:
+            return None
+        if not self._trend_alignment_ok(direction.value, bars_m5):
             return None
 
         if not self._spread_ok(symbol):
@@ -78,6 +83,17 @@ class SignalEngine:
             return False
         spread = abs(tick["ask"] - tick["bid"])
         return spread > 0
+
+    def _trend_alignment_ok(self, direction: str, bars_m5) -> bool:
+        if bars_m5 is None or len(bars_m5) < 25:
+            return False
+        fast = ema(bars_m5["close"], 8)
+        slow = ema(bars_m5["close"], 21)
+        if fast.iloc[-1] > slow.iloc[-1] and direction == "BUY":
+            return True
+        if fast.iloc[-1] < slow.iloc[-1] and direction == "SELL":
+            return True
+        return False
 
     def _record_signal(self, signal: SignalResult, regime: VolatilityRegime) -> None:
         self._signal_history.append(
