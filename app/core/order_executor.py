@@ -15,6 +15,7 @@ logger = get_logger(__name__)
 
 class OrderExecutor:
     RETCODE_MAP = {
+        0: "Order check OK",
         mt5.TRADE_RETCODE_DONE: "Order executed successfully",
         mt5.TRADE_RETCODE_REQUOTE: "Requote received",
         mt5.TRADE_RETCODE_REJECT: "Order rejected by server",
@@ -86,7 +87,7 @@ class OrderExecutor:
         }
 
         check = mt5.order_check(request)
-        if check is not None and check.retcode != mt5.TRADE_RETCODE_DONE:
+        if check is not None and check.retcode not in (0, mt5.TRADE_RETCODE_DONE):
             message = self.RETCODE_MAP.get(check.retcode, "Order check failed")
             logger.info(
                 "order_check_failed",
