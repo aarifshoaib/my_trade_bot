@@ -196,7 +196,8 @@ class OrderExecutor:
         return results
 
     def _normalize_volume(self, symbol_info, lot_size: float) -> float:
-        min_lot = Decimal(str(symbol_info.volume_min))
+        min_override = settings.symbol_min_lots.get(symbol_info.name)
+        min_lot = Decimal(str(min_override if min_override is not None else symbol_info.volume_min))
         max_lot = Decimal(str(symbol_info.volume_max))
         step = Decimal(str(symbol_info.volume_step or 0.01))
         max_lot = min(max_lot, Decimal(str(settings.MAX_LOT_SIZE)))

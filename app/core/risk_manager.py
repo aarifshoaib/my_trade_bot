@@ -90,7 +90,8 @@ class RiskManager:
         if step > 0:
             lot = (lot / step).quantize(Decimal("1"), rounding=ROUND_DOWN) * step
 
-        min_lot = Decimal(str(symbol_info.volume_min))
+        min_override = settings.symbol_min_lots.get(symbol_info.name)
+        min_lot = Decimal(str(min_override if min_override is not None else symbol_info.volume_min))
         max_lot = Decimal(str(symbol_info.volume_max))
         max_lot = min(max_lot, Decimal(str(settings.MAX_LOT_SIZE)))
         lot = max(min_lot, min(lot, max_lot))

@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     MIN_STRATEGY_AGREE_LOW: int = 1
     MIN_STRATEGY_AGREE_NORMAL: int = 1
     TREND_FILTER_ENABLED: bool = False
+    SYMBOL_MIN_LOTS: str = ""
     NEWS_FILTER_ENABLED: bool = False
     FREE_MARGIN_MIN_PERCENT: int = 200
 
@@ -53,6 +54,20 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> List[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def symbol_min_lots(self) -> dict:
+        pairs = [p.strip() for p in self.SYMBOL_MIN_LOTS.split(",") if p.strip()]
+        result = {}
+        for pair in pairs:
+            if ":" not in pair:
+                continue
+            sym, val = pair.split(":", 1)
+            try:
+                result[sym.strip()] = float(val.strip())
+            except ValueError:
+                continue
+        return result
 
     class Config:
         env_file = ".env"
