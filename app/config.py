@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     MAGIC_NUMBER: int = 202401
     MAX_LOT_SIZE: float = 0.01
     DEBUG_SIGNALS: bool = False
+    SIGNAL_MIN_CONF_LOW: float = 0.55
+    SIGNAL_MIN_CONF_NORMAL: float = 0.6
+    MIN_STRATEGY_AGREE_LOW: int = 1
+    MIN_STRATEGY_AGREE_NORMAL: int = 1
+    TREND_FILTER_ENABLED: bool = False
     NEWS_FILTER_ENABLED: bool = False
     FREE_MARGIN_MIN_PERCENT: int = 200
 
