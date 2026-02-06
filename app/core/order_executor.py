@@ -28,6 +28,7 @@ class OrderExecutor:
         mt5.TRADE_RETCODE_MARKET_CLOSED: "Market closed",
         mt5.TRADE_RETCODE_CONNECTION: "No connection",
         mt5.TRADE_RETCODE_TIMEOUT: "Request timeout",
+        10027: "Invalid volume",
     }
 
     def execute_market_order(
@@ -49,6 +50,10 @@ class OrderExecutor:
             return {"success": False, "message": f"Symbol {symbol} not found"}
         if not symbol_info.visible:
             mt5.symbol_select(symbol, True)
+
+        lot_size = self._normalize_volume(symbol_info, lot_size)
+        if lot_size <= 0:
+            return {"success": False, "message": "Invalid lot size"}
 
         tick = mt5.symbol_info_tick(symbol)
         if tick is None:
@@ -159,6 +164,15 @@ class OrderExecutor:
         for pos in positions:
             results.append(self.close_position(pos.ticket))
         return results
+
+    def _normalize_volume(self, symbol_info, lot_size: float) -> float:
+        min_lot = symbol_info.volume_min
+        max_lot = symbol_info.volume_max
+        max_lot = min(max_lot, settings.MAX_LOT_SIZE)
+        step = symbol_info.volume_step or 0.01
+        lot = max(min_lot, min(lot_size, max_lot))
+        lot = (lot // step) * step
+        return float(lot)
 
 
 order_executor = OrderExecutor()

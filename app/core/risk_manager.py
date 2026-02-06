@@ -71,18 +71,28 @@ class RiskManager:
         if symbol_info is None:
             return 0.0
 
-        point_value = Decimal(str(symbol_info.point))
-        sl_distance = Decimal(str(sl_points)) * point_value
-        if sl_distance == 0:
+        tick_value = Decimal(str(symbol_info.trade_tick_value))
+        tick_size = Decimal(str(symbol_info.trade_tick_size))
+        if tick_value <= 0 or tick_size <= 0:
+            return float(symbol_info.volume_min)
+
+        sl_distance = Decimal(str(sl_points))
+        if sl_distance <= 0:
             return 0.0
 
-        base_lot = (risk_amount / sl_distance).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        value_per_price = tick_value / tick_size
+        base_lot = risk_amount / (sl_distance * value_per_price)
 
         multiplier = Decimal(str(self._regime_multiplier(regime)))
-        lot = (base_lot * multiplier).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        lot = base_lot * multiplier
+
+        step = Decimal(str(symbol_info.volume_step or 0.01))
+        if step > 0:
+            lot = (lot / step).quantize(Decimal("1"), rounding=ROUND_DOWN) * step
 
         min_lot = Decimal(str(symbol_info.volume_min))
         max_lot = Decimal(str(symbol_info.volume_max))
+        max_lot = min(max_lot, Decimal(str(settings.MAX_LOT_SIZE)))
         lot = max(min_lot, min(lot, max_lot))
 
         return float(lot)

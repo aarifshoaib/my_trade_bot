@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     AUTO_TRADE: bool = False
     AUTO_ARM: bool = False
     MAGIC_NUMBER: int = 202401
+    MAX_LOT_SIZE: float = 0.01
     NEWS_FILTER_ENABLED: bool = False
     FREE_MARGIN_MIN_PERCENT: int = 200
 
