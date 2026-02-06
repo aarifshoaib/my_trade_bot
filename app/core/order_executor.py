@@ -92,9 +92,19 @@ class OrderExecutor:
                 "order_check_failed",
                 retcode=check.retcode,
                 message=message,
+                comment=getattr(check, "comment", None),
+                request_id=getattr(check, "request_id", None),
                 request=request,
             )
-            return {"success": False, "message": message, "details": {"retcode": check.retcode}}
+            return {
+                "success": False,
+                "message": message,
+                "details": {
+                    "retcode": check.retcode,
+                    "comment": getattr(check, "comment", None),
+                    "request_id": getattr(check, "request_id", None),
+                },
+            }
 
         result = mt5.order_send(request)
         if result is None:
