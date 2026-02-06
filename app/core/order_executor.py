@@ -63,6 +63,16 @@ class OrderExecutor:
         lot_size = self._normalize_volume(symbol_info, lot_size)
         if lot_size <= 0:
             return {"success": False, "message": "Invalid lot size"}
+        if settings.DEBUG_SIGNALS:
+            min_lot, max_lot, step = self._volume_rules(symbol_info)
+            logger.info(
+                "volume_rules",
+                symbol=symbol_info.name,
+                min_lot=float(min_lot),
+                max_lot=float(max_lot),
+                step=float(step),
+                chosen=lot_size,
+            )
 
         tick = mt5.symbol_info_tick(symbol)
         if tick is None:
@@ -113,6 +123,16 @@ class OrderExecutor:
 
         message = self.RETCODE_MAP.get(result.retcode, "Unknown retcode")
         success = result.retcode == mt5.TRADE_RETCODE_DONE
+
+        if not success and result.retcode == mt5.TRADE_RETCODE_INVALID_VOLUME:
+            min_lot, _, _ = self._volume_rules(symbol_info)
+            if lot_size != float(min_lot):
+                request["volume"] = float(min_lot)
+                retry = mt5.order_send(request)
+                if retry is not None:
+                    message = self.RETCODE_MAP.get(retry.retcode, "Unknown retcode")
+                    success = retry.retcode == mt5.TRADE_RETCODE_DONE
+                    result = retry
 
         logger.info(
             "order_send_result",
@@ -196,11 +216,7 @@ class OrderExecutor:
         return results
 
     def _normalize_volume(self, symbol_info, lot_size: float) -> float:
-        min_override = settings.symbol_min_lots.get(symbol_info.name)
-        min_lot = Decimal(str(min_override if min_override is not None else symbol_info.volume_min))
-        max_lot = Decimal(str(symbol_info.volume_max))
-        step = Decimal(str(symbol_info.volume_step or 0.01))
-        max_lot = min(max_lot, Decimal(str(settings.MAX_LOT_SIZE)))
+        min_lot, max_lot, step = self._volume_rules(symbol_info)
 
         if max_lot < min_lot:
             logger.info(
@@ -215,6 +231,14 @@ class OrderExecutor:
         if step > 0:
             lot = (lot / step).quantize(Decimal("1"), rounding=ROUND_DOWN) * step
         return float(lot)
+
+    def _volume_rules(self, symbol_info) -> tuple[Decimal, Decimal, Decimal]:
+        min_override = settings.symbol_min_lots.get(symbol_info.name)
+        min_lot = Decimal(str(min_override if min_override is not None else symbol_info.volume_min))
+        max_lot = Decimal(str(symbol_info.volume_max))
+        max_lot = min(max_lot, Decimal(str(settings.MAX_LOT_SIZE)))
+        step = Decimal(str(symbol_info.volume_step or 0.01))
+        return min_lot, max_lot, step
 
 
 order_executor = OrderExecutor()
