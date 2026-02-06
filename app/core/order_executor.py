@@ -72,6 +72,7 @@ class OrderExecutor:
                 max_lot=float(max_lot),
                 step=float(step),
                 chosen=lot_size,
+                trade_mode=getattr(symbol_info, "trade_mode", None),
             )
 
         tick = mt5.symbol_info_tick(symbol)
@@ -139,6 +140,8 @@ class OrderExecutor:
             success=success,
             retcode=result.retcode,
             message=message,
+            comment=getattr(result, "comment", None),
+            last_error=mt5.last_error(),
             request=request,
         )
 
