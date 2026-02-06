@@ -74,8 +74,9 @@ class SignalEngine:
             if settings.DEBUG_SIGNALS:
                 logger.info("signal_skipped_no_strategy_match", symbol=symbol, regime=regime.value)
             return None
-        direction, confidence, final_signal = self._calculate_confluence(signals, weights)
-        if direction is None or confidence < 0.7:
+        direction, confidence, final_signal = self._calculate_confluence(signals, weights, regime)
+        min_conf = 0.6 if regime == VolatilityRegime.LOW_VOL else 0.65
+        if direction is None or confidence < min_conf:
             if settings.DEBUG_SIGNALS:
                 logger.info(
                     "signal_skipped_low_confluence",
@@ -166,13 +167,15 @@ class SignalEngine:
         self,
         signals: list[SignalResult],
         weights: dict[str, float],
+        regime: VolatilityRegime,
     ) -> tuple[SignalDirection | None, float, SignalResult]:
         buy = [s for s in signals if s.direction.value == "BUY"]
         sell = [s for s in signals if s.direction.value == "SELL"]
 
-        if len(buy) >= 2 and len(buy) >= len(sell):
+        min_agree = 1 if regime == VolatilityRegime.LOW_VOL else 2
+        if len(buy) >= min_agree and len(buy) >= len(sell):
             return self._aggregate("BUY", buy, weights)
-        if len(sell) >= 2 and len(sell) > len(buy):
+        if len(sell) >= min_agree and len(sell) > len(buy):
             return self._aggregate("SELL", sell, weights)
         return None, 0.0, signals[0]
 
