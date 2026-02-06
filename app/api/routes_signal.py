@@ -1,9 +1,12 @@
 """Signal endpoints."""
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter
 
 from app.core.signal_engine import signal_engine
+from app.config import settings
 
 router = APIRouter(prefix="/api/v1/signals", tags=["signals"])
 
@@ -20,13 +23,38 @@ async def signal_history():
 
 @router.get("/forecast")
 async def signal_forecast():
-    recent = signal_engine.get_recent_signals(limit=200)
-    by_symbol: dict[str, dict] = {}
-    for item in recent:
-        symbol = item.get("symbol")
-        if symbol and symbol not in by_symbol:
-            by_symbol[symbol] = item
-    return list(by_symbol.values())
+    results = []
+    for symbol in settings.symbol_list:
+        signal = await asyncio.to_thread(signal_engine.generate_signal, symbol)
+        if signal is None:
+            results.append(
+                {
+                    "symbol": symbol,
+                    "direction": "NEUTRAL",
+                    "confidence": 0.0,
+                    "strategy": "none",
+                    "entry": 0.0,
+                    "sl": 0.0,
+                    "tp": 0.0,
+                    "regime": "unknown",
+                    "reason": "no_signal",
+                }
+            )
+            continue
+        results.append(
+            {
+                "symbol": signal.symbol,
+                "direction": signal.direction.value,
+                "confidence": signal.confidence,
+                "strategy": signal.strategy_name,
+                "entry": signal.entry_price,
+                "sl": signal.stop_loss,
+                "tp": signal.take_profit,
+                "regime": "live",
+                "reason": signal.reasoning,
+            }
+        )
+    return results
 
 
 @router.post("/toggle-auto")
