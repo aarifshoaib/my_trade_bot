@@ -62,6 +62,9 @@ class RiskManager:
         sl_points: float,
         regime: VolatilityRegime,
     ) -> float:
+        fixed = settings.symbol_fixed_lots.get(symbol)
+        if fixed is not None:
+            return float(fixed)
         if sl_points <= 0:
             return 0.0
 

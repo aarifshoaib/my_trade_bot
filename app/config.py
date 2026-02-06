@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     MIN_STRATEGY_AGREE_NORMAL: int = 1
     TREND_FILTER_ENABLED: bool = False
     SYMBOL_MIN_LOTS: str = ""
+    SYMBOL_FIXED_LOTS: str = ""
     NEWS_FILTER_ENABLED: bool = False
     FREE_MARGIN_MIN_PERCENT: int = 200
 
@@ -58,6 +59,20 @@ class Settings(BaseSettings):
     @property
     def symbol_min_lots(self) -> dict:
         pairs = [p.strip() for p in self.SYMBOL_MIN_LOTS.split(",") if p.strip()]
+        result = {}
+        for pair in pairs:
+            if ":" not in pair:
+                continue
+            sym, val = pair.split(":", 1)
+            try:
+                result[sym.strip()] = float(val.strip())
+            except ValueError:
+                continue
+        return result
+
+    @property
+    def symbol_fixed_lots(self) -> dict:
+        pairs = [p.strip() for p in self.SYMBOL_FIXED_LOTS.split(",") if p.strip()]
         result = {}
         for pair in pairs:
             if ":" not in pair:
