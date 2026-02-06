@@ -68,6 +68,13 @@ class MT5Connector:
             if not info.visible:
                 if not mt5.symbol_select(symbol, True):
                     logger.warning("symbol_select_failed", symbol=symbol, error=mt5.last_error())
+            if settings.DEBUG_SIGNALS:
+                logger.info(
+                    "symbol_volume_rules",
+                    symbol=symbol,
+                    min_lot=info.volume_min,
+                    step=info.volume_step,
+                )
 
         self._initialized = True
         return True
