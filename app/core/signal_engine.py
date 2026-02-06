@@ -13,6 +13,7 @@ from app.strategies.rsi_divergence import RSIDivergenceStrategy
 from app.strategies.bollinger_squeeze import BollingerSqueezeStrategy
 from app.strategies.vwap_scalper import VWAPScalperStrategy
 from app.strategies.base_strategy import SignalResult
+from app.config import settings
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -52,6 +53,8 @@ class SignalEngine:
 
         regime = self.volatility_engine.detect_regime(bars_m1)
         if regime == VolatilityRegime.EXTREME:
+            if settings.DEBUG_SIGNALS:
+                logger.info("signal_skipped_extreme_regime", symbol=symbol)
             return None
         weights = self.volatility_engine.get_strategy_weights(regime)
 
@@ -68,14 +71,28 @@ class SignalEngine:
                 signals.append(signal)
 
         if not signals:
+            if settings.DEBUG_SIGNALS:
+                logger.info("signal_skipped_no_strategy_match", symbol=symbol, regime=regime.value)
             return None
         direction, confidence, final_signal = self._calculate_confluence(signals, weights)
         if direction is None or confidence < 0.7:
+            if settings.DEBUG_SIGNALS:
+                logger.info(
+                    "signal_skipped_low_confluence",
+                    symbol=symbol,
+                    confidence=confidence,
+                    regime=regime.value,
+                    candidates=len(signals),
+                )
             return None
         if not self._trend_alignment_ok(direction.value, bars_m5):
+            if settings.DEBUG_SIGNALS:
+                logger.info("signal_skipped_trend_misalignment", symbol=symbol, direction=direction.value)
             return None
 
         if not self._spread_ok(symbol):
+            if settings.DEBUG_SIGNALS:
+                logger.info("signal_skipped_spread", symbol=symbol)
             return None
 
         logger.info(

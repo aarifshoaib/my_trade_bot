@@ -54,6 +54,13 @@ async def _signal_loop() -> None:
                 )
 
                 if not signal_engine.is_auto_execute(symbol) or not status.armed:
+                    if settings.DEBUG_SIGNALS:
+                        logger.info(
+                            "trade_skipped_not_armed_or_auto",
+                            symbol=symbol,
+                            auto=signal_engine.is_auto_execute(symbol),
+                            armed=status.armed,
+                        )
                     continue
 
                 account_info = mt5.account_info()
