@@ -29,6 +29,9 @@ async def execute_trade(payload: ExecuteTradeRequest) -> TradeActionResponse:
     if not decision.approved:
         return TradeActionResponse(success=False, message=decision.reason)
 
+    if payload.stop_loss <= 0 or payload.take_profit <= 0:
+        return TradeActionResponse(success=False, message="Stop loss and take profit must be > 0")
+
     if payload.lot_size is None:
         lot_size = 0.01
     else:

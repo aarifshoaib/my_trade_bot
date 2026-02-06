@@ -67,6 +67,12 @@ async def _signal_loop() -> None:
                 equity = account_info.equity if account_info else 0.0
                 decision = risk_manager.approve_trade(symbol, signal.direction.value, equity)
                 if not decision.approved:
+                    if settings.DEBUG_SIGNALS:
+                        logger.info(
+                            "trade_skipped_risk",
+                            symbol=symbol,
+                            reason=decision.reason,
+                        )
                     continue
 
                 sl_points = abs(signal.entry_price - signal.stop_loss)
@@ -76,16 +82,31 @@ async def _signal_loop() -> None:
                 regime = VolatilityEngine().detect_regime(bars)
                 lot_size = risk_manager.calculate_lot_size(symbol, equity, sl_points, regime)
                 if lot_size <= 0:
+                    if settings.DEBUG_SIGNALS:
+                        logger.info("trade_skipped_lot", symbol=symbol, lot=lot_size)
                     continue
 
-                result = order_executor.execute_market_order(
-                    symbol=symbol,
-                    direction=signal.direction.value,
-                    lot_size=lot_size,
-                    stop_loss=signal.stop_loss,
-                    take_profit=signal.take_profit,
-                    comment=signal.strategy_name,
-                )
+                if settings.DEBUG_SIGNALS:
+                    logger.info(
+                        "trade_attempt",
+                        symbol=symbol,
+                        direction=signal.direction.value,
+                        lot=lot_size,
+                        sl=signal.stop_loss,
+                        tp=signal.take_profit,
+                    )
+                try:
+                    result = order_executor.execute_market_order(
+                        symbol=symbol,
+                        direction=signal.direction.value,
+                        lot_size=lot_size,
+                        stop_loss=signal.stop_loss,
+                        take_profit=signal.take_profit,
+                        comment=signal.strategy_name,
+                    )
+                except Exception as exc:
+                    logger.error("trade_exception", symbol=symbol, error=str(exc))
+                    continue
                 await ws_manager.broadcast(
                     {
                         "type": "trade_opened" if result.get("success") else "error",
