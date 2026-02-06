@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Dict, Optional
+from decimal import Decimal, ROUND_DOWN
 
 import MetaTrader5 as mt5
 
@@ -51,6 +52,9 @@ class OrderExecutor:
         if not symbol_info.visible:
             mt5.symbol_select(symbol, True)
 
+        if not symbol_info.trade_allowed:
+            return {"success": False, "message": "Symbol not tradeable"}
+
         lot_size = self._normalize_volume(symbol_info, lot_size)
         if lot_size <= 0:
             return {"success": False, "message": "Invalid lot size"}
@@ -76,6 +80,17 @@ class OrderExecutor:
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_IOC,
         }
+
+        check = mt5.order_check(request)
+        if check is not None and check.retcode != mt5.TRADE_RETCODE_DONE:
+            message = self.RETCODE_MAP.get(check.retcode, "Order check failed")
+            logger.info(
+                "order_check_failed",
+                retcode=check.retcode,
+                message=message,
+                request=request,
+            )
+            return {"success": False, "message": message, "details": {"retcode": check.retcode}}
 
         result = mt5.order_send(request)
         if result is None:
@@ -166,12 +181,23 @@ class OrderExecutor:
         return results
 
     def _normalize_volume(self, symbol_info, lot_size: float) -> float:
-        min_lot = symbol_info.volume_min
-        max_lot = symbol_info.volume_max
-        max_lot = min(max_lot, settings.MAX_LOT_SIZE)
-        step = symbol_info.volume_step or 0.01
-        lot = max(min_lot, min(lot_size, max_lot))
-        lot = (lot // step) * step
+        min_lot = Decimal(str(symbol_info.volume_min))
+        max_lot = Decimal(str(symbol_info.volume_max))
+        step = Decimal(str(symbol_info.volume_step or 0.01))
+        max_lot = min(max_lot, Decimal(str(settings.MAX_LOT_SIZE)))
+
+        if max_lot < min_lot:
+            logger.info(
+                "max_lot_below_min",
+                min_lot=float(min_lot),
+                max_lot=float(max_lot),
+            )
+            max_lot = min_lot
+
+        lot = Decimal(str(lot_size))
+        lot = max(min_lot, min(lot, max_lot))
+        if step > 0:
+            lot = (lot / step).quantize(Decimal("1"), rounding=ROUND_DOWN) * step
         return float(lot)
 
 
