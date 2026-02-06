@@ -60,6 +60,15 @@ class MT5Connector:
                 server=account_info.server,
             )
 
+        for symbol in settings.symbol_list:
+            info = mt5.symbol_info(symbol)
+            if info is None:
+                logger.warning("symbol_not_found", symbol=symbol)
+                continue
+            if not info.visible:
+                if not mt5.symbol_select(symbol, True):
+                    logger.warning("symbol_select_failed", symbol=symbol, error=mt5.last_error())
+
         self._initialized = True
         return True
 

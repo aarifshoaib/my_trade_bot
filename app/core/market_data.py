@@ -18,8 +18,16 @@ class MarketData:
 
         import MetaTrader5 as mt5
 
+        info = mt5.symbol_info(symbol)
+        if info is None:
+            logger.warning("symbol_not_found", symbol=symbol)
+            return None
+        if not info.visible:
+            mt5.symbol_select(symbol, True)
+
         tick = mt5.symbol_info_tick(symbol)
         if tick is None:
+            logger.warning("tick_missing", symbol=symbol, error=mt5.last_error())
             return None
         return {
             "symbol": symbol,
@@ -36,8 +44,16 @@ class MarketData:
 
         import MetaTrader5 as mt5
 
+        info = mt5.symbol_info(symbol)
+        if info is None:
+            logger.warning("symbol_not_found", symbol=symbol)
+            return None
+        if not info.visible:
+            mt5.symbol_select(symbol, True)
+
         rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, count)
         if rates is None or len(rates) == 0:
+            logger.warning("bars_missing", symbol=symbol, timeframe=timeframe, error=mt5.last_error())
             return None
         return pd.DataFrame(rates)
 
