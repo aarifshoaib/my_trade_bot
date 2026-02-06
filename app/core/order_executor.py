@@ -52,7 +52,11 @@ class OrderExecutor:
         if not symbol_info.visible:
             mt5.symbol_select(symbol, True)
 
-        if not symbol_info.trade_allowed:
+        trade_allowed = getattr(symbol_info, "trade_allowed", True)
+        trade_mode = getattr(symbol_info, "trade_mode", None)
+        if trade_mode is not None and trade_mode == mt5.SYMBOL_TRADE_MODE_DISABLED:
+            trade_allowed = False
+        if not trade_allowed:
             return {"success": False, "message": "Symbol not tradeable"}
 
         lot_size = self._normalize_volume(symbol_info, lot_size)
